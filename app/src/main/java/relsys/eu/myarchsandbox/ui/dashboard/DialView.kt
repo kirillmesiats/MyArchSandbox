@@ -1,5 +1,8 @@
 package relsys.eu.myarchsandbox.ui.dashboard
 
+import android.animation.Animator
+import android.animation.AnimatorSet
+import android.animation.ObjectAnimator
 import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Color
@@ -11,7 +14,6 @@ import android.util.Log
 import android.util.TypedValue
 import android.view.MotionEvent
 import android.view.MotionEvent.INVALID_POINTER_ID
-import android.view.animation.LinearInterpolator
 import android.widget.RelativeLayout
 import android.widget.TextView
 
@@ -22,13 +24,27 @@ class DialView @JvmOverloads constructor(
     defStyle: Int = 0
 ) : RelativeLayout(context, attrs, defStyle) {
 
+    val DEBUG_TAG = "Gestures"
+
     private lateinit var valuesLayout : RelativeLayout
-    private var mLastTouchX = 0f
+    private var mLastTouchX : Float
     private var mLastTouchY = 0f
     private var mActivePointerId = INVALID_POINTER_ID
-    private var totalAngle = 0f
+    // current angle on which the disk is turned
+    private var currentAngle : Float
+    // sum angle on which the disk is turned within a single touch event
+    private var sumAngle : Float
+    private val angles = linkedMapOf<Float, TextView>()
+    // index of current value in angles array
+    private var valueKey : Float
+    private var value = 3
 
     init {
+        valueKey = 0f
+        currentAngle = 0f
+        sumAngle = 0f
+        mLastTouchX = 0f
+
         post {
             val minAttr = Math.min(width, height)
 
@@ -63,12 +79,16 @@ class DialView @JvmOverloads constructor(
                 for (i in 1..10) {
                     val textView = buildTextView("${i}X")
                     valuesLayout.addView(textView)
-                    val angleDegrees = 36 * (i-3)
+                    val angleDegrees = 36 * (i-value)
+                    angles[0 - angleDegrees.toFloat()] = textView
+                    //angles[i - 1] = 0 - angleDegrees.toFloat()
                     val angle = Math.toRadians((angleDegrees - 90).toDouble())
                     textView.x = (cx + Math.cos(angle) * (radius - textView.measuredHeight / 2) - textView.measuredWidth / 2).toFloat()
                     textView.y = (cy + Math.sin(angle) * (radius - textView.measuredHeight / 2) - textView.measuredHeight / 2).toFloat()
                     textView.rotation = angleDegrees.toFloat()
                 }
+
+                angles.forEach { println(it) }
             }
         }
     }
@@ -101,27 +121,49 @@ class DialView @JvmOverloads constructor(
         return textView
     }
 
-    fun doAnimate(angle : Float) {
-        valuesLayout.rotation
-        val animate = valuesLayout.animate()
-        animate.duration = 0
-        animate.interpolator = LinearInterpolator()
-        animate.rotationBy(angle).start()
+    private fun doAnimate(angle : Float) {
+        currentAngle += angle
+
+        val animations = arrayListOf<Animator>()
+
+        val rotationAnimator = ObjectAnimator.ofFloat(valuesLayout, "rotation", valuesLayout.rotation,
+            valuesLayout.rotation + angle)
+        rotationAnimator.duration = 0
+        animations.add(rotationAnimator)
+
+        val newValueKey = Math.round(currentAngle / 36).toFloat() * 36
+        if (newValueKey != valueKey) {
+            val newKeyAnimatorX = ObjectAnimator.ofFloat(angles[newValueKey], "scaleX", 1f, 1.5f)
+            newKeyAnimatorX.duration = 50
+            animations.add(newKeyAnimatorX)
+
+            val newKeyAnimatorY = ObjectAnimator.ofFloat(angles[newValueKey], "scaleY", 1f, 1.5f)
+            newKeyAnimatorY.duration = 50
+            animations.add(newKeyAnimatorY)
+
+            val valueKeyAnimatorX = ObjectAnimator.ofFloat(angles[valueKey], "scaleX", 1.5f, 1f)
+            valueKeyAnimatorX.duration = 50
+            animations.add(valueKeyAnimatorX)
+
+            val valueKeyAnimatorY = ObjectAnimator.ofFloat(angles[valueKey], "scaleY", 1.5f, 1f)
+            valueKeyAnimatorY.duration = 50
+            animations.add(valueKeyAnimatorY)
+
+            Log.d(DEBUG_TAG, "current angle = $currentAngle, valueKey = $valueKey, newValueKey = $newValueKey")
+            valueKey = newValueKey
+        }
+
+        val animatorSet = AnimatorSet()
+        animatorSet.playTogether(animations)
+        animatorSet.start()
     }
 
-//    override fun onTouchEvent(event: MotionEvent?): Boolean {
-//        return if (mDetector.onTouchEvent(event)) {
-//            true
-//        } else {
-//            return super.onTouchEvent(event)
-//        }
-//    }
+    fun doAnimateScale(textView: TextView) {
+        textView.animate().scaleXBy(2.0f).start()
+    }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
-
-        val DEBUG_TAG = "Gestures"
         val action: Int = event.actionMasked
-
 
         when (action) {
             MotionEvent.ACTION_DOWN -> {
@@ -131,7 +173,7 @@ class DialView @JvmOverloads constructor(
                 }
 
                 mActivePointerId = event.getPointerId(0)
-                totalAngle = 0f
+                sumAngle = 0f
 
             }
             MotionEvent.ACTION_MOVE -> {
@@ -148,15 +190,17 @@ class DialView @JvmOverloads constructor(
                 val screenWidth = context.resources.displayMetrics.widthPixels
 
                 val angle = 180 * dx / screenWidth
-                totalAngle += angle
-                println("screenWidth = $screenWidth; dx = $dx; angle = $angle")
+                sumAngle += angle
+
+                //Log.d(DEBUG_TAG, "screenWidth = $screenWidth; dx = $dx; angle = $angle")
                 doAnimate(angle)
+
             }
             MotionEvent.ACTION_UP -> {
-                val remainder = totalAngle % 36
+                val remainder = sumAngle % 36
                 val angle = if (Math.abs(remainder) >= 18) {
                     if (remainder > 0) {
-                        36 - Math.abs(remainder)
+                        36 - remainder
                     } else {
                         0 - (36 - Math.abs(remainder))
                     }
@@ -164,10 +208,8 @@ class DialView @JvmOverloads constructor(
                     0 - remainder
                 }
                 doAnimate(angle)
-                Log.d(DEBUG_TAG, "total angle = $totalAngle; remainder = $remainder; angle = $angle; result = ${totalAngle + angle}")
 
-                //Log.d(DEBUG_TAG, "Action was UP")
-
+                Log.d(DEBUG_TAG, "total angle = $sumAngle; remainder = $remainder; angle = $angle; result = ${sumAngle + angle}")
             }
         }
         return true

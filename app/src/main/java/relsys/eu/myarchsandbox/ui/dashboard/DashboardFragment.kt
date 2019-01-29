@@ -48,7 +48,8 @@ class DashboardFragment : Fragment() {
         // Inflate the layout for this fragment
         val view = inflater.inflate(R.layout.fragment_dashboard, container, false)
         view.findViewById<Button>(R.id.animateBtn).setOnClickListener {
-            view.findViewById<DialView>(R.id.dialView).doAnimate(180f)
+            //view.findViewById<DialView>(R.id.dialView).doAnimate(180f)
+            view.findViewById<DialView>(R.id.dialView).doAnimateScale(view.findViewById(R.id.testScaleLbl))
         }
         return view
     }
