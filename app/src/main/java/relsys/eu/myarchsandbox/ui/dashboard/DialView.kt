@@ -28,13 +28,12 @@ class DialView @JvmOverloads constructor(
 
     private lateinit var valuesLayout : RelativeLayout
     private var mLastTouchX : Float
-    private var mLastTouchY = 0f
     private var mActivePointerId = INVALID_POINTER_ID
     // current angle on which the disk is turned
     private var currentAngle : Float
-    // sum angle on which the disk is turned within a single touch event
-    private var sumAngle : Float
     private val angles = linkedMapOf<Float, TextView>()
+    private var maxClockwiseAngle = 0f
+    private var maxCounterClockwiseAngle = 0f
     // index of current value in angles array
     private var valueKey : Float
     private var value = 3
@@ -42,7 +41,6 @@ class DialView @JvmOverloads constructor(
     init {
         valueKey = 0f
         currentAngle = 0f
-        sumAngle = 0f
         mLastTouchX = 0f
 
         post {
@@ -50,7 +48,7 @@ class DialView @JvmOverloads constructor(
 
             // add inner layout with values that will be rotated
             valuesLayout = RelativeLayout(context, attrs, defStyle)
-            val layoutParams = LayoutParams(minAttr, minAttr/*LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT*/)
+            val layoutParams = LayoutParams(minAttr, minAttr)
             layoutParams.addRule(CENTER_HORIZONTAL)
             valuesLayout.layoutParams = layoutParams
 
@@ -80,15 +78,18 @@ class DialView @JvmOverloads constructor(
                     val textView = buildTextView("${i}X")
                     valuesLayout.addView(textView)
                     val angleDegrees = 36 * (i-value)
-                    angles[0 - angleDegrees.toFloat()] = textView
-                    //angles[i - 1] = 0 - angleDegrees.toFloat()
+                    val key = 0 - angleDegrees.toFloat()
+                    angles[key] = textView
+                    if (i == 1) {
+                        maxClockwiseAngle = key
+                    } else if (i == 10) {
+                        maxCounterClockwiseAngle = key
+                    }
                     val angle = Math.toRadians((angleDegrees - 90).toDouble())
                     textView.x = (cx + Math.cos(angle) * (radius - textView.measuredHeight / 2) - textView.measuredWidth / 2).toFloat()
                     textView.y = (cy + Math.sin(angle) * (radius - textView.measuredHeight / 2) - textView.measuredHeight / 2).toFloat()
                     textView.rotation = angleDegrees.toFloat()
                 }
-
-                angles.forEach { println(it) }
             }
         }
     }
@@ -121,7 +122,28 @@ class DialView @JvmOverloads constructor(
         return textView
     }
 
-    private fun doAnimate(angle : Float) {
+    private fun doAnimate(angleParam : Float) {
+
+        var angle = angleParam
+
+        if (angle < 0) {
+            // we cannot rotate counterclockwise anymore
+            if (currentAngle == maxCounterClockwiseAngle) {
+                return
+            }
+            if (currentAngle + angle < maxCounterClockwiseAngle) {
+                angle = maxCounterClockwiseAngle - currentAngle
+            }
+        } else {
+            // we cannot rotate clockwise anymore
+            if (currentAngle == maxClockwiseAngle) {
+                return
+            }
+            if (currentAngle + angle > maxClockwiseAngle) {
+                angle = maxClockwiseAngle - currentAngle
+            }
+        }
+
         currentAngle += angle
 
         val animations = arrayListOf<Animator>()
@@ -169,35 +191,27 @@ class DialView @JvmOverloads constructor(
             MotionEvent.ACTION_DOWN -> {
                 event.actionIndex.also {pointerIndex ->
                     mLastTouchX = event.getX(pointerIndex)
-                    mLastTouchY = event.getY(pointerIndex)
                 }
 
                 mActivePointerId = event.getPointerId(0)
-                sumAngle = 0f
-
             }
             MotionEvent.ACTION_MOVE -> {
                 val (x: kotlin.Float, y: kotlin.Float) = event.findPointerIndex(mActivePointerId).let { pointerIndex ->
                     event.getX(pointerIndex) to event.getY(pointerIndex)
                 }
 
-                var dx = x - mLastTouchX
-                var dy = y - mLastTouchY
+                val dx = x - mLastTouchX
 
                 mLastTouchX = x
-                mLastTouchY = y
 
                 val screenWidth = context.resources.displayMetrics.widthPixels
 
                 val angle = 180 * dx / screenWidth
-                sumAngle += angle
 
-                //Log.d(DEBUG_TAG, "screenWidth = $screenWidth; dx = $dx; angle = $angle")
                 doAnimate(angle)
-
             }
             MotionEvent.ACTION_UP -> {
-                val remainder = sumAngle % 36
+                val remainder = currentAngle % 36
                 val angle = if (Math.abs(remainder) >= 18) {
                     if (remainder > 0) {
                         36 - remainder
@@ -209,30 +223,22 @@ class DialView @JvmOverloads constructor(
                 }
                 doAnimate(angle)
 
-                Log.d(DEBUG_TAG, "total angle = $sumAngle; remainder = $remainder; angle = $angle; result = ${sumAngle + angle}")
+                Log.d(DEBUG_TAG, "total angle = $currentAngle; remainder = $remainder; angle = $angle; result = ${currentAngle + angle}")
             }
         }
         return true
     }
 
-    override fun onDraw(canvas: Canvas?) {
-        super.onDraw(canvas)
+    override fun dispatchDraw(canvas: Canvas) {
+        super.dispatchDraw(canvas)
 
-//        val mPaint = Paint()
-//
-//        mPaint.color = Color.WHITE
-//        mPaint.style = Paint.Style.STROKE
-//        mPaint.strokeWidth = 4F
-//        mPaint.isAntiAlias = true
-//
-//        val minAttr = Math.min(width, height)
-//        val radius = minAttr / 2
-//
-//        println(width)
-//        println(height)
-//        println(radius)
-//
-//        canvas?.drawCircle((width / 2).toFloat(), (height / 2).toFloat(), radius.toFloat() /*+ mPadding - 10*/, mPaint)
+        val mPaint = Paint()
 
+        mPaint.color = Color.BLACK
+        mPaint.style = Paint.Style.STROKE
+        mPaint.strokeWidth = 2F
+        mPaint.isAntiAlias = true
+
+        canvas?.drawLine((width / 2).toFloat(), 0f, (width / 2).toFloat(),  height.toFloat(), mPaint)
     }
 }
