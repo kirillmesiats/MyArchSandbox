@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="dialValuesFontSize">22sp</dimen>
+    <dimen name="dialScaleMarksPadding">5dp</dimen>
+    <dimen name="dialScaleMarksSmallSize">4dp</dimen>
+    <dimen name="dialScaleMarksBigSize">15dp</dimen>
+</resources>

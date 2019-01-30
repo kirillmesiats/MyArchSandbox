@@ -16,6 +16,7 @@ import android.view.MotionEvent
 import android.view.MotionEvent.INVALID_POINTER_ID
 import android.widget.RelativeLayout
 import android.widget.TextView
+import relsys.eu.myarchsandbox.R
 
 
 class DialView @JvmOverloads constructor(
@@ -59,7 +60,7 @@ class DialView @JvmOverloads constructor(
 
 
             // Specify the border color of shape
-            background.paint.color = Color.GREEN
+            background.paint.color = Color.TRANSPARENT
 
             // Set the border width
 //            background.paint.strokeWidth = 4f
@@ -97,28 +98,12 @@ class DialView @JvmOverloads constructor(
     private fun buildTextView(value : String) : TextView {
         val textView = TextView(context)
         textView.text = value
-        textView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 24F)
+        textView.setTextSize(TypedValue.COMPLEX_UNIT_PX, resources.getDimension(R.dimen.dialValuesFontSize))
         textView.measure(0, 0)
 
         val layoutParams = LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT)
 
         textView.layoutParams = layoutParams
-//
-//        val sd = ShapeDrawable()
-//
-//        // Specify the shape of ShapeDrawable
-//        sd.shape = RectShape()
-//
-//        // Specify the border color of shape
-//        sd.paint.color = Color.WHITE
-//
-//        // Set the border width
-//        sd.paint.strokeWidth = 4f
-//
-//        // Specify the style is a Stroke
-//        sd.paint.style = Paint.Style.STROKE
-//        textView.background = sd
-
         return textView
     }
 
@@ -234,11 +219,56 @@ class DialView @JvmOverloads constructor(
 
         val mPaint = Paint()
 
+        val minAttr = Math.min(width, height)
+        val cx = width / 2
+        val cy = height / 2
+
+        val outerRadius = minAttr / 2 - resources.getDimensionPixelSize(R.dimen.dialValuesFontSize) * 2
+
+        mPaint.color = Color.WHITE
+        mPaint.style = Paint.Style.FILL
+        mPaint.isAntiAlias = true
+        canvas.drawCircle(cx.toFloat(), cy.toFloat(), outerRadius.toFloat(), mPaint)
+
+        mPaint.reset()
+
         mPaint.color = Color.BLACK
         mPaint.style = Paint.Style.STROKE
-        mPaint.strokeWidth = 2F
+        mPaint.strokeWidth = 3F
         mPaint.isAntiAlias = true
 
-        canvas?.drawLine((width / 2).toFloat(), 0f, (width / 2).toFloat(),  height.toFloat(), mPaint)
+        val scaleMarksRadius = outerRadius - resources.getDimensionPixelSize(R.dimen.dialScaleMarksPadding)
+        val scaleMarksSmallRadius = scaleMarksRadius - resources.getDimensionPixelSize(R.dimen.dialScaleMarksSmallSize)
+        val scaleMarksBigRadius = scaleMarksRadius - resources.getDimensionPixelSize(R.dimen.dialScaleMarksBigSize)
+
+        val angleBetweenScaleMarks = (360 / 10).toFloat() / 8
+        var currentAngle = 0F
+        for (i in 0 until 80) {
+            Log.d(DEBUG_TAG, currentAngle.toString())
+            val angle = Math.toRadians(currentAngle.toDouble() - 90)
+            val x1 = cx + Math.cos(angle) * scaleMarksRadius.toFloat()
+            val y1 = cy + Math.sin(angle) * scaleMarksRadius.toFloat()
+
+            val x2y2 = if (i % 8 == 0) {
+                // big scale mark
+                cx + Math.cos(angle) * scaleMarksBigRadius.toFloat() to
+                        cy + Math.sin(angle) * scaleMarksBigRadius.toFloat()
+            } else {
+                cx + Math.cos(angle) * scaleMarksSmallRadius.toFloat() to
+                        cy + Math.sin(angle) * scaleMarksSmallRadius.toFloat()
+            }
+            canvas.drawLine(x1.toFloat(), y1.toFloat(), x2y2.first.toFloat(), x2y2.second.toFloat(), mPaint)
+
+            currentAngle += angleBetweenScaleMarks
+        }
+
+//        mPaint.reset()
+//        mPaint.color = Color.BLACK
+//        mPaint.style = Paint.Style.STROKE
+//        mPaint.strokeWidth = 3F
+//        mPaint.isAntiAlias = true
+//
+//        canvas.drawLine((width / 2).toFloat(), 0f, (width / 2).toFloat(),  height.toFloat(), mPaint)
+//        canvas.drawLine(0f, (height / 2).toFloat(),  width.toFloat(), (height / 2).toFloat(), mPaint)
     }
 }
