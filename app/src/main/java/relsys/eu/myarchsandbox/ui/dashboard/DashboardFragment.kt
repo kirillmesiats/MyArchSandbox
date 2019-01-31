@@ -12,12 +12,6 @@ import com.google.android.material.snackbar.Snackbar
 import kotlinx.android.synthetic.main.fragment_dashboard.*
 import relsys.eu.myarchsandbox.R
 
-
-// TODO: Rename parameter arguments, choose names that match
-// the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
-//private const val ARG_PARAM1 = "param1"
-//private const val ARG_PARAM2 = "param2"
-
 /**
  * A simple [Fragment] subclass.
  * Activities that contain this fragment must implement the
@@ -29,16 +23,10 @@ import relsys.eu.myarchsandbox.R
  */
 class DashboardFragment : Fragment() {
     // TODO: Rename and change types of parameters
-//    private var param1: String? = null
-//    private var param2: String? = null
     private var listener: OnFragmentInteractionListener? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-//        arguments?.let {
-//            param1 = it.getString(ARG_PARAM1)
-//            param2 = it.getString(ARG_PARAM2)
-//        }
     }
 
     override fun onCreateView(
@@ -47,16 +35,12 @@ class DashboardFragment : Fragment() {
     ): View? {
         // Inflate the layout for this fragment
         val view = inflater.inflate(R.layout.fragment_dashboard, container, false)
-        view.findViewById<Button>(R.id.animateBtn).setOnClickListener {
-            //view.findViewById<DialView>(R.id.dialView).doAnimate(180f)
-            view.findViewById<DialView>(R.id.dialView).doAnimateScale(view.findViewById(R.id.testScaleLbl))
-        }
+
         return view
     }
 
     override fun onStart() {
         super.onStart()
-//        dialView.addTextView()
     }
 
     // TODO: Rename method, update argument and hook method into UI event
@@ -66,11 +50,6 @@ class DashboardFragment : Fragment() {
 
     override fun onAttach(context: Context) {
         super.onAttach(context)
-//        if (context is OnFragmentInteractionListener) {
-//            listener = context
-//        } else {
-//            throw RuntimeException(context.toString() + " must implement OnFragmentInteractionListener")
-//        }
     }
 
     override fun onDetach() {
@@ -105,12 +84,6 @@ class DashboardFragment : Fragment() {
          */
         // TODO: Rename and change types and number of parameters
         @JvmStatic
-        fun newInstance(/*param1: String, param2: String*/) = DashboardFragment()
-//            DashboardFragment().apply {
-//                arguments = Bundle().apply {
-//                    putString(ARG_PARAM1, param1)
-//                    putString(ARG_PARAM2, param2)
-//                }
-//            }
+        fun newInstance() = DashboardFragment()
     }
 }

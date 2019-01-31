@@ -2,6 +2,8 @@
 <resources>
     <dimen name="dialValuesFontSize">22sp</dimen>
     <dimen name="dialScaleMarksPadding">5dp</dimen>
-    <dimen name="dialScaleMarksSmallSize">4dp</dimen>
-    <dimen name="dialScaleMarksBigSize">15dp</dimen>
+    <dimen name="dialScaleMarksSmallSize">2dp</dimen>
+    <dimen name="dialScaleMarksBigSize">10dp</dimen>
+
+    <dimen name="dialInnerCirclePadding">40dp</dimen>
 </resources>

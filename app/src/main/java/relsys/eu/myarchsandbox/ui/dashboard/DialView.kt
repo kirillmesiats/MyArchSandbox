@@ -7,6 +7,7 @@ import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
+import android.graphics.RectF
 import android.graphics.drawable.ShapeDrawable
 import android.graphics.drawable.shapes.OvalShape
 import android.util.AttributeSet
@@ -27,6 +28,8 @@ class DialView @JvmOverloads constructor(
 
     val DEBUG_TAG = "Gestures"
 
+    private val mPaint = Paint()
+    private val mRectF = RectF()
     private lateinit var valuesLayout : RelativeLayout
     private var mLastTouchX : Float
     private var mActivePointerId = INVALID_POINTER_ID
@@ -37,12 +40,15 @@ class DialView @JvmOverloads constructor(
     private var maxCounterClockwiseAngle = 0f
     // index of current value in angles array
     private var valueKey : Float
-    private var value = 3
+    private var value = 1
 
     init {
         valueKey = 0f
         currentAngle = 0f
         mLastTouchX = 0f
+
+        clipChildren = false
+        clipToPadding = false
 
         post {
             val minAttr = Math.min(width, height)
@@ -52,6 +58,10 @@ class DialView @JvmOverloads constructor(
             val layoutParams = LayoutParams(minAttr, minAttr)
             layoutParams.addRule(CENTER_HORIZONTAL)
             valuesLayout.layoutParams = layoutParams
+            valuesLayout.pivotX = (width / 2).toFloat()
+            valuesLayout.pivotY = height.toFloat()
+            valuesLayout.clipChildren = false
+            valuesLayout.clipToPadding = false
 
             val background = ShapeDrawable()
 
@@ -73,7 +83,7 @@ class DialView @JvmOverloads constructor(
             valuesLayout.post {
                 val radius = minAttr / 2
                 val cx = valuesLayout.width / 2
-                val cy = valuesLayout.height / 2
+                val cy = valuesLayout.height
 
                 for (i in 1..10) {
                     val textView = buildTextView("${i}X")
@@ -98,6 +108,8 @@ class DialView @JvmOverloads constructor(
     private fun buildTextView(value : String) : TextView {
         val textView = TextView(context)
         textView.text = value
+        textView.setTextColor(Color.WHITE)
+        textView.alpha = 0.5f
         textView.setTextSize(TypedValue.COMPLEX_UNIT_PX, resources.getDimension(R.dimen.dialValuesFontSize))
         textView.measure(0, 0)
 
@@ -148,6 +160,10 @@ class DialView @JvmOverloads constructor(
             newKeyAnimatorY.duration = 50
             animations.add(newKeyAnimatorY)
 
+            val newKeyAlpha = ObjectAnimator.ofFloat(angles[newValueKey], "alpha", 0.5f, 1f)
+            newKeyAlpha.duration = 50
+            animations.add(newKeyAlpha)
+
             val valueKeyAnimatorX = ObjectAnimator.ofFloat(angles[valueKey], "scaleX", 1.5f, 1f)
             valueKeyAnimatorX.duration = 50
             animations.add(valueKeyAnimatorX)
@@ -156,17 +172,16 @@ class DialView @JvmOverloads constructor(
             valueKeyAnimatorY.duration = 50
             animations.add(valueKeyAnimatorY)
 
-            Log.d(DEBUG_TAG, "current angle = $currentAngle, valueKey = $valueKey, newValueKey = $newValueKey")
+            val valueKeyAlpha = ObjectAnimator.ofFloat(angles[valueKey], "alpha", 1f, 0.5f)
+            valueKeyAlpha.duration = 50
+            animations.add(valueKeyAlpha)
+
             valueKey = newValueKey
         }
 
         val animatorSet = AnimatorSet()
         animatorSet.playTogether(animations)
         animatorSet.start()
-    }
-
-    fun doAnimateScale(textView: TextView) {
-        textView.animate().scaleXBy(2.0f).start()
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
@@ -181,9 +196,7 @@ class DialView @JvmOverloads constructor(
                 mActivePointerId = event.getPointerId(0)
             }
             MotionEvent.ACTION_MOVE -> {
-                val (x: kotlin.Float, y: kotlin.Float) = event.findPointerIndex(mActivePointerId).let { pointerIndex ->
-                    event.getX(pointerIndex) to event.getY(pointerIndex)
-                }
+                val x = event.findPointerIndex(mActivePointerId).let { pointerIndex -> event.getX(pointerIndex) }
 
                 val dx = x - mLastTouchX
 
@@ -196,19 +209,8 @@ class DialView @JvmOverloads constructor(
                 doAnimate(angle)
             }
             MotionEvent.ACTION_UP -> {
-                val remainder = currentAngle % 36
-                val angle = if (Math.abs(remainder) >= 18) {
-                    if (remainder > 0) {
-                        36 - remainder
-                    } else {
-                        0 - (36 - Math.abs(remainder))
-                    }
-                } else {
-                    0 - remainder
-                }
-                doAnimate(angle)
-
-                Log.d(DEBUG_TAG, "total angle = $currentAngle; remainder = $remainder; angle = $angle; result = ${currentAngle + angle}")
+                val angleUntil = Math.round(currentAngle / 36).toFloat() * 36
+                doAnimate(angleUntil - currentAngle)
             }
         }
         return true
@@ -217,22 +219,24 @@ class DialView @JvmOverloads constructor(
     override fun dispatchDraw(canvas: Canvas) {
         super.dispatchDraw(canvas)
 
-        val mPaint = Paint()
-
         val minAttr = Math.min(width, height)
         val cx = width / 2
-        val cy = height / 2
+        val cy = height
 
-        val outerRadius = minAttr / 2 - resources.getDimensionPixelSize(R.dimen.dialValuesFontSize) * 2
+        val outerRadius = (minAttr / 2 - resources.getDimensionPixelSize(R.dimen.dialValuesFontSize) * 2).toFloat()
 
+        mPaint.reset()
         mPaint.color = Color.WHITE
         mPaint.style = Paint.Style.FILL
         mPaint.isAntiAlias = true
-        canvas.drawCircle(cx.toFloat(), cy.toFloat(), outerRadius.toFloat(), mPaint)
+        //canvas.drawCircle(cx.toFloat(), cy.toFloat(), outerRadius.toFloat(), mPaint)
+
+        mRectF.set(cx - outerRadius, cy - outerRadius, cx + outerRadius, cy + outerRadius)
+        canvas.drawArc(mRectF, 0f, -180f, true, mPaint)
 
         mPaint.reset()
 
-        mPaint.color = Color.BLACK
+        mPaint.color = Color.parseColor("#8B74A1")
         mPaint.style = Paint.Style.STROKE
         mPaint.strokeWidth = 3F
         mPaint.isAntiAlias = true
@@ -242,25 +246,38 @@ class DialView @JvmOverloads constructor(
         val scaleMarksBigRadius = scaleMarksRadius - resources.getDimensionPixelSize(R.dimen.dialScaleMarksBigSize)
 
         val angleBetweenScaleMarks = (360 / 10).toFloat() / 8
-        var currentAngle = 0F
+        var currentAngle = -90F
         for (i in 0 until 80) {
-            Log.d(DEBUG_TAG, currentAngle.toString())
-            val angle = Math.toRadians(currentAngle.toDouble() - 90)
-            val x1 = cx + Math.cos(angle) * scaleMarksRadius.toFloat()
-            val y1 = cy + Math.sin(angle) * scaleMarksRadius.toFloat()
+            if (currentAngle <= 0 || currentAngle >= 180) {
+                val angle = Math.toRadians(currentAngle.toDouble())
+                val x1 = cx + Math.cos(angle) * scaleMarksRadius
+                val y1 = cy + Math.sin(angle) * scaleMarksRadius
 
-            val x2y2 = if (i % 8 == 0) {
-                // big scale mark
-                cx + Math.cos(angle) * scaleMarksBigRadius.toFloat() to
-                        cy + Math.sin(angle) * scaleMarksBigRadius.toFloat()
-            } else {
-                cx + Math.cos(angle) * scaleMarksSmallRadius.toFloat() to
-                        cy + Math.sin(angle) * scaleMarksSmallRadius.toFloat()
+                val x2y2 = if (i % 8 == 0) {
+                    // big scale mark
+                    cx + Math.cos(angle) * scaleMarksBigRadius to
+                            cy + Math.sin(angle) * scaleMarksBigRadius
+                } else {
+                    cx + Math.cos(angle) * scaleMarksSmallRadius to
+                            cy + Math.sin(angle) * scaleMarksSmallRadius
+                }
+                canvas.drawLine(x1.toFloat(), y1.toFloat(), x2y2.first.toFloat(), x2y2.second.toFloat(), mPaint)
             }
-            canvas.drawLine(x1.toFloat(), y1.toFloat(), x2y2.first.toFloat(), x2y2.second.toFloat(), mPaint)
 
             currentAngle += angleBetweenScaleMarks
         }
+
+        mPaint.reset()
+        mPaint.color = Color.parseColor("#0D502E73")
+        mPaint.style = Paint.Style.FILL
+        mPaint.isAntiAlias = true
+
+        val innerRadius = (outerRadius - resources.getDimensionPixelSize(R.dimen.dialInnerCirclePadding)).toFloat()
+        // canvas.drawCircle(cx.toFloat(), cy.toFloat(), innerRadius, mPaint)
+        mRectF.set(cx - innerRadius, cy - innerRadius, cx + innerRadius, cy + innerRadius)
+        canvas.drawArc(mRectF, 0f, -180f, true, mPaint)
+
+//        canvas.drawRect(0f, (height / 2).toFloat(), width.toFloat(), height.toFloat(), mPaint)
 
 //        mPaint.reset()
 //        mPaint.color = Color.BLACK
@@ -270,5 +287,6 @@ class DialView @JvmOverloads constructor(
 //
 //        canvas.drawLine((width / 2).toFloat(), 0f, (width / 2).toFloat(),  height.toFloat(), mPaint)
 //        canvas.drawLine(0f, (height / 2).toFloat(),  width.toFloat(), (height / 2).toFloat(), mPaint)
+
     }
 }
