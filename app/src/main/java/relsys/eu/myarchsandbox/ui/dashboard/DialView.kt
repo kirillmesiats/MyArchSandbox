@@ -30,22 +30,22 @@ class DialView @JvmOverloads constructor(
 
     private val mPaint = Paint()
     private val mRectF = RectF()
-    private lateinit var valuesLayout : RelativeLayout
-    private var mLastTouchX : Float
+    private lateinit var valuesLayout: RelativeLayout
+    private var mLastTouchX = 0f
     private var mActivePointerId = INVALID_POINTER_ID
     // current angle on which the disk is turned
-    private var currentAngle : Float
-    private val angles = linkedMapOf<Float, TextView>()
-    private var maxClockwiseAngle = 0f
-    private var maxCounterClockwiseAngle = 0f
+    private var currentAngle = 0f
+    private val angles = ArrayList<Float>()
+    private val labels = ArrayList<TextView>()
+    //    private var maxClockwiseAngle = 0f
+//    private var maxCounterClockwiseAngle = 0f
     // index of current value in angles array
-    private var valueKey : Float
-    private var value = 1
+//    private var valueKey : Float
+    private var currentValue = 0
 
     init {
-        valueKey = 0f
-        currentAngle = 0f
-        mLastTouchX = 0f
+        //        valueKey = 0f
+//        mLastTouchX = 0f
 
         clipChildren = false
         clipToPadding = false
@@ -85,31 +85,34 @@ class DialView @JvmOverloads constructor(
                 val cx = valuesLayout.width / 2
                 val cy = valuesLayout.height
 
-                for (i in 1..10) {
-                    val textView = buildTextView("${i}X")
+                for (i in 0..9) {
+                    val textView = buildTextView("${i + 1}X")
                     valuesLayout.addView(textView)
-                    val angleDegrees = 36 * (i-value)
-                    val key = 0 - angleDegrees.toFloat()
-                    angles[key] = textView
-                    if (i == 1) {
-                        maxClockwiseAngle = key
-                    } else if (i == 10) {
-                        maxCounterClockwiseAngle = key
-                    }
+                    val angleDegrees = 36 * i
+                    angles.add(0 - angleDegrees.toFloat())
+                    labels.add(textView)
                     val angle = Math.toRadians((angleDegrees - 90).toDouble())
-                    textView.x = (cx + Math.cos(angle) * (radius - textView.measuredHeight / 2) - textView.measuredWidth / 2).toFloat()
-                    textView.y = (cy + Math.sin(angle) * (radius - textView.measuredHeight / 2) - textView.measuredHeight / 2).toFloat()
+                    textView.x =
+                            (cx + Math.cos(angle) * (radius - textView.measuredHeight / 2) - textView.measuredWidth / 2).toFloat()
+                    textView.y =
+                            (cy + Math.sin(angle) * (radius - textView.measuredHeight / 2) - textView.measuredHeight / 2).toFloat()
                     textView.rotation = angleDegrees.toFloat()
                 }
             }
         }
     }
 
-    private fun buildTextView(value : String) : TextView {
+    private fun buildTextView(value: String): TextView {
         val textView = TextView(context)
         textView.text = value
         textView.setTextColor(Color.WHITE)
-        textView.alpha = 0.5f
+        if (labels.size == 0) {
+            textView.alpha = 1f
+            textView.scaleX = 1.5f
+            textView.scaleY = 1.5f
+        } else {
+            textView.alpha = 0.5f
+        }
         textView.setTextSize(TypedValue.COMPLEX_UNIT_PX, resources.getDimension(R.dimen.dialValuesFontSize))
         textView.measure(0, 0)
 
@@ -119,25 +122,25 @@ class DialView @JvmOverloads constructor(
         return textView
     }
 
-    private fun doAnimate(angleParam : Float) {
+    private fun doAnimate(angleParam: Float) {
 
         var angle = angleParam
 
         if (angle < 0) {
             // we cannot rotate counterclockwise anymore
-            if (currentAngle == maxCounterClockwiseAngle) {
+            if (currentAngle == angles[angles.size - 1]) {
                 return
             }
-            if (currentAngle + angle < maxCounterClockwiseAngle) {
-                angle = maxCounterClockwiseAngle - currentAngle
+            if (currentAngle + angle < angles[angles.size - 1]) {
+                angle = angles[angles.size - 1] - currentAngle
             }
         } else {
             // we cannot rotate clockwise anymore
-            if (currentAngle == maxClockwiseAngle) {
+            if (currentAngle == angles[0]) {
                 return
             }
-            if (currentAngle + angle > maxClockwiseAngle) {
-                angle = maxClockwiseAngle - currentAngle
+            if (currentAngle + angle > angles[0]) {
+                angle = angles[0] - currentAngle
             }
         }
 
@@ -145,38 +148,40 @@ class DialView @JvmOverloads constructor(
 
         val animations = arrayListOf<Animator>()
 
-        val rotationAnimator = ObjectAnimator.ofFloat(valuesLayout, "rotation", valuesLayout.rotation,
-            valuesLayout.rotation + angle)
+        val rotationAnimator = ObjectAnimator.ofFloat(
+            valuesLayout, "rotation", valuesLayout.rotation,
+            valuesLayout.rotation + angle
+        )
         rotationAnimator.duration = 0
         animations.add(rotationAnimator)
 
-        val newValueKey = Math.round(currentAngle / 36).toFloat() * 36
-        if (newValueKey != valueKey) {
-            val newKeyAnimatorX = ObjectAnimator.ofFloat(angles[newValueKey], "scaleX", 1f, 1.5f)
+        val newValueKey = Math.abs(Math.round(currentAngle / 36))
+        if (newValueKey != currentValue) {
+            val newKeyAnimatorX = ObjectAnimator.ofFloat(labels[newValueKey], "scaleX", 1f, 1.5f)
             newKeyAnimatorX.duration = 50
             animations.add(newKeyAnimatorX)
 
-            val newKeyAnimatorY = ObjectAnimator.ofFloat(angles[newValueKey], "scaleY", 1f, 1.5f)
+            val newKeyAnimatorY = ObjectAnimator.ofFloat(labels[newValueKey], "scaleY", 1f, 1.5f)
             newKeyAnimatorY.duration = 50
             animations.add(newKeyAnimatorY)
 
-            val newKeyAlpha = ObjectAnimator.ofFloat(angles[newValueKey], "alpha", 0.5f, 1f)
+            val newKeyAlpha = ObjectAnimator.ofFloat(labels[newValueKey], "alpha", 0.5f, 1f)
             newKeyAlpha.duration = 50
             animations.add(newKeyAlpha)
 
-            val valueKeyAnimatorX = ObjectAnimator.ofFloat(angles[valueKey], "scaleX", 1.5f, 1f)
+            val valueKeyAnimatorX = ObjectAnimator.ofFloat(labels[currentValue], "scaleX", 1.5f, 1f)
             valueKeyAnimatorX.duration = 50
             animations.add(valueKeyAnimatorX)
 
-            val valueKeyAnimatorY = ObjectAnimator.ofFloat(angles[valueKey], "scaleY", 1.5f, 1f)
+            val valueKeyAnimatorY = ObjectAnimator.ofFloat(labels[currentValue], "scaleY", 1.5f, 1f)
             valueKeyAnimatorY.duration = 50
             animations.add(valueKeyAnimatorY)
 
-            val valueKeyAlpha = ObjectAnimator.ofFloat(angles[valueKey], "alpha", 1f, 0.5f)
+            val valueKeyAlpha = ObjectAnimator.ofFloat(labels[currentValue], "alpha", 1f, 0.5f)
             valueKeyAlpha.duration = 50
             animations.add(valueKeyAlpha)
 
-            valueKey = newValueKey
+            currentValue = newValueKey
         }
 
         val animatorSet = AnimatorSet()
@@ -189,7 +194,7 @@ class DialView @JvmOverloads constructor(
 
         when (action) {
             MotionEvent.ACTION_DOWN -> {
-                event.actionIndex.also {pointerIndex ->
+                event.actionIndex.also { pointerIndex ->
                     mLastTouchX = event.getX(pointerIndex)
                 }
 
@@ -289,4 +294,5 @@ class DialView @JvmOverloads constructor(
 //        canvas.drawLine(0f, (height / 2).toFloat(),  width.toFloat(), (height / 2).toFloat(), mPaint)
 
     }
+
 }
