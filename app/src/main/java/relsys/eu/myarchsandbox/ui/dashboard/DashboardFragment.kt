@@ -35,6 +35,11 @@ class DashboardFragment : Fragment() {
     ): View? {
         // Inflate the layout for this fragment
         val view = inflater.inflate(R.layout.fragment_dashboard, container, false)
+        val dialView = view.findViewById<DialView>(R.id.dialView)
+        dialView.apply {
+            setCenterTitle("241,59")
+            setCenterMsg("MONTHLY SAVINGS\nPOTENTIAL")
+        }
 
         return view
     }

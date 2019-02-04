@@ -4,19 +4,17 @@ import android.animation.Animator
 import android.animation.AnimatorSet
 import android.animation.ObjectAnimator
 import android.content.Context
-import android.graphics.Canvas
-import android.graphics.Color
-import android.graphics.Paint
-import android.graphics.RectF
-import android.graphics.drawable.ShapeDrawable
-import android.graphics.drawable.shapes.OvalShape
+import android.graphics.*
 import android.util.AttributeSet
-import android.util.Log
 import android.util.TypedValue
+import android.view.HapticFeedbackConstants
 import android.view.MotionEvent
 import android.view.MotionEvent.INVALID_POINTER_ID
+import android.view.SoundEffectConstants
+import android.view.View
 import android.widget.RelativeLayout
 import android.widget.TextView
+import androidx.core.content.res.ResourcesCompat
 import relsys.eu.myarchsandbox.R
 
 
@@ -31,90 +29,126 @@ class DialView @JvmOverloads constructor(
     private val mPaint = Paint()
     private val mRectF = RectF()
     private lateinit var valuesLayout: RelativeLayout
+    private lateinit var centerTitleLbl: TextView
+    private lateinit var centerMsgLbl: TextView
     private var mLastTouchX = 0f
     private var mActivePointerId = INVALID_POINTER_ID
     // current angle on which the disk is turned
     private var currentAngle = 0f
     private val angles = ArrayList<Float>()
     private val labels = ArrayList<TextView>()
-    //    private var maxClockwiseAngle = 0f
-//    private var maxCounterClockwiseAngle = 0f
-    // index of current value in angles array
-//    private var valueKey : Float
     private var currentValue = 0
+    private val mode = Mode.ARC
+    private val screenWidth = context.resources.displayMetrics.widthPixels
+    private var cx = 0
+    private var cy = 0
+    private var scaleOuterRadius = 0f
+    private var scaleInnerRadius = 0f
 
     init {
-        //        valueKey = 0f
-//        mLastTouchX = 0f
-
         clipChildren = false
         clipToPadding = false
+        isSoundEffectsEnabled = true
+        isHapticFeedbackEnabled = true
 
         post {
-            val minAttr = Math.min(width, height)
+            val minAttr = if (mode == Mode.ARC) {
+                width
+            } else {
+                Math.min(width, height)
+            }
+
+            cx = width / 2
+            cy = if (mode == Mode.ARC) {
+                height
+            } else {
+                height / 2
+            }
+
+            scaleOuterRadius =
+                    (minAttr / 2 - resources.getDimensionPixelSize(R.dimen.dialValuesFontSize) * 1.5).toFloat()
+            scaleInnerRadius = scaleOuterRadius - resources.getDimensionPixelSize(R.dimen.dialInnerCirclePadding)
 
             // add inner layout with values that will be rotated
             valuesLayout = RelativeLayout(context, attrs, defStyle)
             val layoutParams = LayoutParams(minAttr, minAttr)
             layoutParams.addRule(CENTER_HORIZONTAL)
             valuesLayout.layoutParams = layoutParams
-            valuesLayout.pivotX = (width / 2).toFloat()
-            valuesLayout.pivotY = height.toFloat()
+            if (mode == Mode.ARC) {
+                valuesLayout.pivotX = (width / 2).toFloat()
+                valuesLayout.pivotY = height.toFloat()
+            }
             valuesLayout.clipChildren = false
             valuesLayout.clipToPadding = false
-
-            val background = ShapeDrawable()
-
-            // Specify the shape of ShapeDrawable
-            background.shape = OvalShape()
-
-
-            // Specify the border color of shape
-            background.paint.color = Color.TRANSPARENT
-
-            // Set the border width
-//            background.paint.strokeWidth = 4f
-
-            // Specify the style is a Stroke
-            background.paint.style = Paint.Style.FILL
-            valuesLayout.background = background
             addView(valuesLayout)
 
             valuesLayout.post {
                 val radius = minAttr / 2
-                val cx = valuesLayout.width / 2
-                val cy = valuesLayout.height
 
                 for (i in 0..9) {
-                    val textView = buildTextView("${i + 1}X")
+                    val textView = buildValueTextView("${i + 1}X")
                     valuesLayout.addView(textView)
                     val angleDegrees = 36 * i
                     angles.add(0 - angleDegrees.toFloat())
                     labels.add(textView)
                     val angle = Math.toRadians((angleDegrees - 90).toDouble())
-                    textView.x =
-                            (cx + Math.cos(angle) * (radius - textView.measuredHeight / 2) - textView.measuredWidth / 2).toFloat()
-                    textView.y =
-                            (cy + Math.sin(angle) * (radius - textView.measuredHeight / 2) - textView.measuredHeight / 2).toFloat()
+
+                    textView.x = (cx + Math.cos(angle) * radius - textView.measuredWidth / 2).toFloat()
+                    textView.y = (cy + Math.sin(angle) * radius - textView.measuredHeight / 2).toFloat()
                     textView.rotation = angleDegrees.toFloat()
                 }
             }
+            addCenterTitleAndMsg(context)
         }
     }
 
-    private fun buildTextView(value: String): TextView {
+    private fun addCenterTitleAndMsg(context: Context) {
+        // lets add current value label and comment
+        centerTitleLbl = TextView(context)
+        centerTitleLbl.textAlignment = View.TEXT_ALIGNMENT_CENTER
+        centerTitleLbl.setTypeface(ResourcesCompat.getFont(context, R.font.open_sans), Typeface.NORMAL)
+        centerTitleLbl.setTextColor(Color.parseColor("#564467"))
+        centerTitleLbl.setTextSize(
+            TypedValue.COMPLEX_UNIT_PX, resources.getDimensionPixelSize(R.dimen.dialValuesFontSize) * 1.33f
+        )
+        val squareSideHalf = (scaleInnerRadius / Math.sqrt(2.0)).toFloat()
+        addView(centerTitleLbl)
+        centerTitleLbl.x = cx - squareSideHalf
+        centerTitleLbl.y = cy - squareSideHalf
+        centerTitleLbl.width = squareSideHalf.toInt() * 2
+        centerTitleLbl.height = squareSideHalf.toInt() / 2
+
+        centerMsgLbl = TextView(context)
+        centerMsgLbl.textAlignment = View.TEXT_ALIGNMENT_CENTER
+        centerMsgLbl.setTypeface(ResourcesCompat.getFont(context, R.font.open_sans), Typeface.NORMAL)
+        centerMsgLbl.setTextColor(Color.parseColor("#C4B8CC"))
+        centerMsgLbl.setTextSize(
+            TypedValue.COMPLEX_UNIT_PX, resources.getDimensionPixelSize(R.dimen.dialValuesFontSize) / 2f
+        )
+        addView(centerMsgLbl)
+        centerMsgLbl.x = centerTitleLbl.x
+        centerMsgLbl.y = centerTitleLbl.y + squareSideHalf.toInt() / 2
+        centerMsgLbl.width = squareSideHalf.toInt() * 2
+        centerMsgLbl.height = squareSideHalf.toInt() / 2
+    }
+
+    private fun buildValueTextView(value: String): TextView {
         val textView = TextView(context)
         textView.text = value
         textView.setTextColor(Color.WHITE)
+        textView.setTextSize(
+            TypedValue.COMPLEX_UNIT_PX,
+            resources.getDimensionPixelSize(R.dimen.dialValuesFontSize).toFloat()
+        )
+        textView.setTypeface(ResourcesCompat.getFont(context, R.font.open_sans), Typeface.NORMAL)
+        textView.measure(0, 0)
         if (labels.size == 0) {
             textView.alpha = 1f
-            textView.scaleX = 1.5f
-            textView.scaleY = 1.5f
+            textView.scaleX = 1.33f
+            textView.scaleY = 1.33f
         } else {
             textView.alpha = 0.5f
         }
-        textView.setTextSize(TypedValue.COMPLEX_UNIT_PX, resources.getDimension(R.dimen.dialValuesFontSize))
-        textView.measure(0, 0)
 
         val layoutParams = LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT)
 
@@ -157,11 +191,11 @@ class DialView @JvmOverloads constructor(
 
         val newValueKey = Math.abs(Math.round(currentAngle / 36))
         if (newValueKey != currentValue) {
-            val newKeyAnimatorX = ObjectAnimator.ofFloat(labels[newValueKey], "scaleX", 1f, 1.5f)
+            val newKeyAnimatorX = ObjectAnimator.ofFloat(labels[newValueKey], "scaleX", 1f, 1.33f)
             newKeyAnimatorX.duration = 50
             animations.add(newKeyAnimatorX)
 
-            val newKeyAnimatorY = ObjectAnimator.ofFloat(labels[newValueKey], "scaleY", 1f, 1.5f)
+            val newKeyAnimatorY = ObjectAnimator.ofFloat(labels[newValueKey], "scaleY", 1f, 1.33f)
             newKeyAnimatorY.duration = 50
             animations.add(newKeyAnimatorY)
 
@@ -169,11 +203,11 @@ class DialView @JvmOverloads constructor(
             newKeyAlpha.duration = 50
             animations.add(newKeyAlpha)
 
-            val valueKeyAnimatorX = ObjectAnimator.ofFloat(labels[currentValue], "scaleX", 1.5f, 1f)
+            val valueKeyAnimatorX = ObjectAnimator.ofFloat(labels[currentValue], "scaleX", 1.33f, 1f)
             valueKeyAnimatorX.duration = 50
             animations.add(valueKeyAnimatorX)
 
-            val valueKeyAnimatorY = ObjectAnimator.ofFloat(labels[currentValue], "scaleY", 1.5f, 1f)
+            val valueKeyAnimatorY = ObjectAnimator.ofFloat(labels[currentValue], "scaleY", 1.33f, 1f)
             valueKeyAnimatorY.duration = 50
             animations.add(valueKeyAnimatorY)
 
@@ -182,6 +216,8 @@ class DialView @JvmOverloads constructor(
             animations.add(valueKeyAlpha)
 
             currentValue = newValueKey
+            playSoundEffect(SoundEffectConstants.CLICK)
+            performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
         }
 
         val animatorSet = AnimatorSet()
@@ -207,8 +243,6 @@ class DialView @JvmOverloads constructor(
 
                 mLastTouchX = x
 
-                val screenWidth = context.resources.displayMetrics.widthPixels
-
                 val angle = 180 * dx / screenWidth
 
                 doAnimate(angle)
@@ -222,31 +256,25 @@ class DialView @JvmOverloads constructor(
     }
 
     override fun dispatchDraw(canvas: Canvas) {
-        super.dispatchDraw(canvas)
-
-        val minAttr = Math.min(width, height)
-        val cx = width / 2
-        val cy = height
-
-        val outerRadius = (minAttr / 2 - resources.getDimensionPixelSize(R.dimen.dialValuesFontSize) * 2).toFloat()
-
         mPaint.reset()
         mPaint.color = Color.WHITE
         mPaint.style = Paint.Style.FILL
         mPaint.isAntiAlias = true
-        //canvas.drawCircle(cx.toFloat(), cy.toFloat(), outerRadius.toFloat(), mPaint)
 
-        mRectF.set(cx - outerRadius, cy - outerRadius, cx + outerRadius, cy + outerRadius)
-        canvas.drawArc(mRectF, 0f, -180f, true, mPaint)
+        if (mode == Mode.ARC) {
+            mRectF.set(cx - scaleOuterRadius, cy - scaleOuterRadius, cx + scaleOuterRadius, cy + scaleOuterRadius)
+            canvas.drawArc(mRectF, 0f, -180f, true, mPaint)
+        } else {
+            canvas.drawCircle(cx.toFloat(), cy.toFloat(), scaleOuterRadius, mPaint)
+        }
 
         mPaint.reset()
-
         mPaint.color = Color.parseColor("#8B74A1")
         mPaint.style = Paint.Style.STROKE
         mPaint.strokeWidth = 3F
         mPaint.isAntiAlias = true
 
-        val scaleMarksRadius = outerRadius - resources.getDimensionPixelSize(R.dimen.dialScaleMarksPadding)
+        val scaleMarksRadius = scaleOuterRadius - resources.getDimensionPixelSize(R.dimen.dialScaleMarksPadding)
         val scaleMarksSmallRadius = scaleMarksRadius - resources.getDimensionPixelSize(R.dimen.dialScaleMarksSmallSize)
         val scaleMarksBigRadius = scaleMarksRadius - resources.getDimensionPixelSize(R.dimen.dialScaleMarksBigSize)
 
@@ -277,22 +305,29 @@ class DialView @JvmOverloads constructor(
         mPaint.style = Paint.Style.FILL
         mPaint.isAntiAlias = true
 
-        val innerRadius = (outerRadius - resources.getDimensionPixelSize(R.dimen.dialInnerCirclePadding)).toFloat()
-        // canvas.drawCircle(cx.toFloat(), cy.toFloat(), innerRadius, mPaint)
-        mRectF.set(cx - innerRadius, cy - innerRadius, cx + innerRadius, cy + innerRadius)
-        canvas.drawArc(mRectF, 0f, -180f, true, mPaint)
-
-//        canvas.drawRect(0f, (height / 2).toFloat(), width.toFloat(), height.toFloat(), mPaint)
-
-//        mPaint.reset()
-//        mPaint.color = Color.BLACK
-//        mPaint.style = Paint.Style.STROKE
-//        mPaint.strokeWidth = 3F
-//        mPaint.isAntiAlias = true
-//
-//        canvas.drawLine((width / 2).toFloat(), 0f, (width / 2).toFloat(),  height.toFloat(), mPaint)
-//        canvas.drawLine(0f, (height / 2).toFloat(),  width.toFloat(), (height / 2).toFloat(), mPaint)
-
+        if (mode == Mode.ARC) {
+            mRectF.set(cx - scaleInnerRadius, cy - scaleInnerRadius, cx + scaleInnerRadius, cy + scaleInnerRadius)
+            canvas.drawArc(mRectF, 0f, -180f, true, mPaint)
+        } else {
+            canvas.drawCircle(cx.toFloat(), cy.toFloat(), scaleInnerRadius, mPaint)
+        }
+        super.dispatchDraw(canvas)
     }
 
+    fun setCenterTitle(title : String)  {
+        post {
+            centerTitleLbl.text = title
+        }
+    }
+
+    fun setCenterMsg(msg : String)  {
+        post {
+            centerMsgLbl.text = msg
+        }
+    }
+
+    private enum class Mode {
+        CIRCLE,
+        ARC
+    }
 }
