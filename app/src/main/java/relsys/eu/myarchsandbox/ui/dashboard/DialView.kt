@@ -103,15 +103,13 @@ class DialView @JvmOverloads constructor(
     }
 
     private fun addCenterTitleAndMsg(context: Context) {
+        val squareSideHalf = (scaleInnerRadius / Math.sqrt(2.0)).toFloat()
         // lets add current value label and comment
         centerTitleLbl = TextView(context)
         centerTitleLbl.textAlignment = View.TEXT_ALIGNMENT_CENTER
         centerTitleLbl.setTypeface(ResourcesCompat.getFont(context, R.font.open_sans), Typeface.NORMAL)
         centerTitleLbl.setTextColor(Color.parseColor("#564467"))
-        centerTitleLbl.setTextSize(
-            TypedValue.COMPLEX_UNIT_PX, resources.getDimensionPixelSize(R.dimen.dialValuesFontSize) * 1.33f
-        )
-        val squareSideHalf = (scaleInnerRadius / Math.sqrt(2.0)).toFloat()
+        centerTitleLbl.setTextSize(TypedValue.COMPLEX_UNIT_PX, squareSideHalf / 2 - 10)
         addView(centerTitleLbl)
         centerTitleLbl.x = cx - squareSideHalf
         centerTitleLbl.y = cy - squareSideHalf
@@ -122,9 +120,7 @@ class DialView @JvmOverloads constructor(
         centerMsgLbl.textAlignment = View.TEXT_ALIGNMENT_CENTER
         centerMsgLbl.setTypeface(ResourcesCompat.getFont(context, R.font.open_sans), Typeface.NORMAL)
         centerMsgLbl.setTextColor(Color.parseColor("#C4B8CC"))
-        centerMsgLbl.setTextSize(
-            TypedValue.COMPLEX_UNIT_PX, resources.getDimensionPixelSize(R.dimen.dialValuesFontSize) / 2f
-        )
+        centerMsgLbl.setTextSize(TypedValue.COMPLEX_UNIT_PX, squareSideHalf / 4 - 10)
         addView(centerMsgLbl)
         centerMsgLbl.x = centerTitleLbl.x
         centerMsgLbl.y = centerTitleLbl.y + squareSideHalf.toInt() / 2
@@ -192,27 +188,27 @@ class DialView @JvmOverloads constructor(
         val newValueKey = Math.abs(Math.round(currentAngle / 36))
         if (newValueKey != currentValue) {
             val newKeyAnimatorX = ObjectAnimator.ofFloat(labels[newValueKey], "scaleX", 1f, 1.33f)
-            newKeyAnimatorX.duration = 50
+            newKeyAnimatorX.duration = 100
             animations.add(newKeyAnimatorX)
 
             val newKeyAnimatorY = ObjectAnimator.ofFloat(labels[newValueKey], "scaleY", 1f, 1.33f)
-            newKeyAnimatorY.duration = 50
+            newKeyAnimatorY.duration = 100
             animations.add(newKeyAnimatorY)
 
             val newKeyAlpha = ObjectAnimator.ofFloat(labels[newValueKey], "alpha", 0.5f, 1f)
-            newKeyAlpha.duration = 50
+            newKeyAlpha.duration = 100
             animations.add(newKeyAlpha)
 
             val valueKeyAnimatorX = ObjectAnimator.ofFloat(labels[currentValue], "scaleX", 1.33f, 1f)
-            valueKeyAnimatorX.duration = 50
+            valueKeyAnimatorX.duration = 100
             animations.add(valueKeyAnimatorX)
 
             val valueKeyAnimatorY = ObjectAnimator.ofFloat(labels[currentValue], "scaleY", 1.33f, 1f)
-            valueKeyAnimatorY.duration = 50
+            valueKeyAnimatorY.duration = 100
             animations.add(valueKeyAnimatorY)
 
             val valueKeyAlpha = ObjectAnimator.ofFloat(labels[currentValue], "alpha", 1f, 0.5f)
-            valueKeyAlpha.duration = 50
+            valueKeyAlpha.duration = 100
             animations.add(valueKeyAlpha)
 
             currentValue = newValueKey
