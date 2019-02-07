@@ -3,13 +3,10 @@ package relsys.eu.myarchsandbox.ui.dashboard
 import android.content.Context
 import android.net.Uri
 import android.os.Bundle
-import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Button
-import com.google.android.material.snackbar.Snackbar
-import kotlinx.android.synthetic.main.fragment_dashboard.*
+import androidx.fragment.app.Fragment
 import relsys.eu.myarchsandbox.R
 
 /**
@@ -38,7 +35,7 @@ class DashboardFragment : Fragment() {
         val dialView = view.findViewById<DialView>(R.id.dialView)
         dialView.apply {
             setCenterTitle("241,59")
-            setCenterMsg("MONTHLY SAVINGS\nPOTENTIAL")
+            setCenterMsg("MONTHLY SAVING POTENTIAL")
         }
 
         return view

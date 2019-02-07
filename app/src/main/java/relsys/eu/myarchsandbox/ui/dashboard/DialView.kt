@@ -7,14 +7,16 @@ import android.content.Context
 import android.graphics.*
 import android.util.AttributeSet
 import android.util.TypedValue
+import android.view.Gravity
 import android.view.HapticFeedbackConstants
 import android.view.MotionEvent
 import android.view.MotionEvent.INVALID_POINTER_ID
 import android.view.SoundEffectConstants
-import android.view.View
 import android.widget.RelativeLayout
 import android.widget.TextView
+import androidx.appcompat.widget.AppCompatTextView
 import androidx.core.content.res.ResourcesCompat
+import androidx.core.widget.TextViewCompat
 import relsys.eu.myarchsandbox.R
 
 
@@ -105,27 +107,31 @@ class DialView @JvmOverloads constructor(
     private fun addCenterTitleAndMsg(context: Context) {
         val squareSideHalf = (scaleInnerRadius / Math.sqrt(2.0)).toFloat()
         // lets add current value label and comment
-        centerTitleLbl = TextView(context)
-        centerTitleLbl.textAlignment = View.TEXT_ALIGNMENT_CENTER
+        centerTitleLbl = AppCompatTextView(context)
+        centerTitleLbl.gravity = Gravity.CENTER
         centerTitleLbl.setTypeface(ResourcesCompat.getFont(context, R.font.open_sans), Typeface.NORMAL)
         centerTitleLbl.setTextColor(Color.parseColor("#564467"))
-        centerTitleLbl.setTextSize(TypedValue.COMPLEX_UNIT_PX, squareSideHalf / 2 - 10)
-        addView(centerTitleLbl)
+        centerTitleLbl.layoutParams = LayoutParams(squareSideHalf.toInt() * 2, squareSideHalf.toInt() / 2)
         centerTitleLbl.x = cx - squareSideHalf
         centerTitleLbl.y = cy - squareSideHalf
-        centerTitleLbl.width = squareSideHalf.toInt() * 2
-        centerTitleLbl.height = squareSideHalf.toInt() / 2
+        TextViewCompat.setAutoSizeTextTypeUniformWithConfiguration(
+            centerTitleLbl, 1, (resources.getDimensionPixelSize(R.dimen.dialValuesFontSize) * 1.33f).toInt(),
+            1, TypedValue.COMPLEX_UNIT_PX
+        )
+        addView(centerTitleLbl)
 
-        centerMsgLbl = TextView(context)
-        centerMsgLbl.textAlignment = View.TEXT_ALIGNMENT_CENTER
+        centerMsgLbl = AppCompatTextView(context)
+        centerMsgLbl.gravity = Gravity.CENTER
         centerMsgLbl.setTypeface(ResourcesCompat.getFont(context, R.font.open_sans), Typeface.NORMAL)
         centerMsgLbl.setTextColor(Color.parseColor("#C4B8CC"))
-        centerMsgLbl.setTextSize(TypedValue.COMPLEX_UNIT_PX, squareSideHalf / 4 - 10)
+        centerMsgLbl.layoutParams = LayoutParams(squareSideHalf.toInt() * 2, squareSideHalf.toInt() / 2)
+        centerMsgLbl.x = cx - squareSideHalf
+        centerMsgLbl.y = cy - squareSideHalf + squareSideHalf.toInt() / 2
+        TextViewCompat.setAutoSizeTextTypeUniformWithConfiguration(
+            centerMsgLbl, 1, resources.getDimensionPixelSize(R.dimen.dialValuesFontSize) / 2,
+            1, TypedValue.COMPLEX_UNIT_PX
+        )
         addView(centerMsgLbl)
-        centerMsgLbl.x = centerTitleLbl.x
-        centerMsgLbl.y = centerTitleLbl.y + squareSideHalf.toInt() / 2
-        centerMsgLbl.width = squareSideHalf.toInt() * 2
-        centerMsgLbl.height = squareSideHalf.toInt() / 2
     }
 
     private fun buildValueTextView(value: String): TextView {
@@ -310,13 +316,13 @@ class DialView @JvmOverloads constructor(
         super.dispatchDraw(canvas)
     }
 
-    fun setCenterTitle(title : String)  {
+    fun setCenterTitle(title: String) {
         post {
             centerTitleLbl.text = title
         }
     }
 
-    fun setCenterMsg(msg : String)  {
+    fun setCenterMsg(msg: String) {
         post {
             centerMsgLbl.text = msg
         }
