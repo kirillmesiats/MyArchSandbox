@@ -5,6 +5,7 @@ import android.animation.AnimatorSet
 import android.animation.ObjectAnimator
 import android.content.Context
 import android.graphics.*
+import android.graphics.drawable.GradientDrawable
 import android.util.AttributeSet
 import android.util.TypedValue
 import android.view.Gravity
@@ -46,6 +47,11 @@ class DialView @JvmOverloads constructor(
     private var cy = 0
     private var scaleOuterRadius = 0f
     private var scaleInnerRadius = 0f
+    private val mShadowPaint = Paint(0).apply {
+        color = 0x101010
+        maskFilter = BlurMaskFilter(8f, BlurMaskFilter.Blur.NORMAL)
+        style = Paint.Style.FILL
+    }
 
     init {
         clipChildren = false
@@ -105,15 +111,20 @@ class DialView @JvmOverloads constructor(
     }
 
     private fun addCenterTitleAndMsg(context: Context) {
+        val gd = GradientDrawable()
+        gd.setColor(-0xff0100) // Changes this drawbale to use a single color instead of a gradient
+        gd.setStroke(1, -0x1000000)
+
         val squareSideHalf = (scaleInnerRadius / Math.sqrt(2.0)).toFloat()
         // lets add current value label and comment
         centerTitleLbl = AppCompatTextView(context)
-        centerTitleLbl.gravity = Gravity.CENTER
+//        centerTitleLbl.background = gd
+        centerTitleLbl.gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
         centerTitleLbl.setTypeface(ResourcesCompat.getFont(context, R.font.open_sans), Typeface.NORMAL)
         centerTitleLbl.setTextColor(Color.parseColor("#564467"))
-        centerTitleLbl.layoutParams = LayoutParams(squareSideHalf.toInt() * 2, squareSideHalf.toInt() / 2)
+        centerTitleLbl.layoutParams = LayoutParams(squareSideHalf.toInt() * 2, (squareSideHalf * 0.75f).toInt())
         centerTitleLbl.x = cx - squareSideHalf
-        centerTitleLbl.y = cy - squareSideHalf
+        centerTitleLbl.y = cy - squareSideHalf * 1.25f
         TextViewCompat.setAutoSizeTextTypeUniformWithConfiguration(
             centerTitleLbl, 1, (resources.getDimensionPixelSize(R.dimen.dialValuesFontSize) * 1.33f).toInt(),
             1, TypedValue.COMPLEX_UNIT_PX
@@ -121,12 +132,13 @@ class DialView @JvmOverloads constructor(
         addView(centerTitleLbl)
 
         centerMsgLbl = AppCompatTextView(context)
-        centerMsgLbl.gravity = Gravity.CENTER
+//        centerMsgLbl.background = gd
+        centerMsgLbl.gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
         centerMsgLbl.setTypeface(ResourcesCompat.getFont(context, R.font.open_sans), Typeface.NORMAL)
         centerMsgLbl.setTextColor(Color.parseColor("#C4B8CC"))
         centerMsgLbl.layoutParams = LayoutParams(squareSideHalf.toInt() * 2, squareSideHalf.toInt() / 2)
-        centerMsgLbl.x = cx - squareSideHalf
-        centerMsgLbl.y = cy - squareSideHalf + squareSideHalf.toInt() / 2
+        centerMsgLbl.x = centerTitleLbl.x
+        centerMsgLbl.y = centerTitleLbl.y + centerTitleLbl.layoutParams.height
         TextViewCompat.setAutoSizeTextTypeUniformWithConfiguration(
             centerMsgLbl, 1, resources.getDimensionPixelSize(R.dimen.dialValuesFontSize) / 2,
             1, TypedValue.COMPLEX_UNIT_PX
